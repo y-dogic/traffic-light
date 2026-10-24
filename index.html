@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Traffic Light Calculator</title>
+<meta name="description" content="Work out your traffic light for the month and what you still need for green.">
+<style>
+:root {
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --soft: #f1f3f5;
+  --text: #1c2028;
+  --muted: #687080;
+  --border: #e2e5ea;
+  --accent: #b42335;
+  --accent-text: #ffffff;
+  --green: #1e9e55;
+  --yellow: #e2a400;
+  --red: #d93a3a;
+  --black: #2b2d31;
+  --off: #d9dce1;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 4px 16px rgba(16, 24, 40, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101216;
+    --surface: #1a1d23;
+    --soft: #23272e;
+    --text: #e8eaee;
+    --muted: #9aa2ae;
+    --border: #2e333b;
+    --accent: #e0566a;
+    --accent-text: #ffffff;
+    --black: #5b5f68;
+    --off: #33373f;
+    --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101216;
+  --surface: #1a1d23;
+  --soft: #23272e;
+  --text: #e8eaee;
+  --muted: #9aa2ae;
+  --border: #2e333b;
+  --accent: #e0566a;
+  --accent-text: #ffffff;
+  --black: #5b5f68;
+  --off: #33373f;
+  --shadow: none;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+}
+main { max-width: 580px; margin: 0 auto; padding: 20px 16px 48px; }
+header { margin: 4px 0 18px; }
+h1 { font-size: 24px; line-height: 1.25; margin: 0; letter-spacing: -.01em; }
+h1 span { display: block; font-size: 15px; font-weight: 500; color: var(--muted); margin-top: 2px; }
+.sub { color: var(--muted); margin: 8px 0 0; font-size: 15px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 18px 16px;
+  margin-bottom: 14px;
+}
+h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+h3 { font-size: 15px; margin: 18px 0 8px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 600; min-width: 0; }
+label.field small { font-weight: 400; color: var(--muted); }
+input[type="month"], input[type="date"], input[type="number"], input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px 10px;
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 42px;
+}
+input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.info { margin-top: 12px; font-size: 14px; color: var(--muted); background: var(--soft); border-radius: 10px; padding: 10px 12px; }
+.info b { color: var(--text); font-weight: 600; }
+.hint { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+.err { color: var(--red); }
+details { margin-top: 10px; }
+summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 4px 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.chip {
+  font: inherit; font-size: 13px; border-radius: 999px; padding: 5px 10px;
+  border: 1px solid var(--border); background: var(--soft); color: var(--text); cursor: pointer;
+}
+.chip.off { text-decoration: line-through; color: var(--muted); }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input { flex: 1; }
+button.btn, label.btn {
+  font: inherit; font-size: 15px; font-weight: 600; border-radius: 10px; padding: 10px 14px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--soft); color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px;
+}
+label.btn.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; width: 100%; }
+.status { margin-top: 10px; font-size: 14px; border-radius: 10px; padding: 10px 12px; background: var(--soft); }
+.status.ok { border-left: 3px solid var(--green); }
+.status.warn { border-left: 3px solid var(--yellow); }
+.bar { height: 4px; background: var(--border); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.fields .wide { grid-column: 1 / -1; }
+.group-label { grid-column: 1 / -1; font-size: 13px; color: var(--muted); margin: 6px 0 -4px; border-top: 1px solid var(--border); padding-top: 12px; }
+input.filled { animation: flash 1.6s ease; }
+@keyframes flash { 0%, 40% { background: color-mix(in srgb, var(--green) 22%, var(--soft)); } 100% { background: var(--soft); } }
+
+.result-top { display: flex; align-items: center; gap: 16px; }
+.lamp {
+  width: 76px; height: 76px; border-radius: 50%; flex: none;
+  background: var(--c); box-shadow: 0 0 0 6px color-mix(in srgb, var(--c) 18%, transparent), 0 0 28px color-mix(in srgb, var(--c) 45%, transparent);
+}
+.score { font-size: 40px; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+.score small { font-size: 16px; color: var(--muted); font-weight: 500; }
+.light-name { font-size: 18px; font-weight: 700; color: var(--c); margin-top: 4px; }
+.meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+.scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 16px; }
+.scale div { text-align: center; font-size: 12px; color: var(--muted); padding: 8px 2px 6px; border-radius: 10px; background: var(--soft); border: 1px solid transparent; }
+.scale div::before { content: ""; display: block; width: 14px; height: 14px; border-radius: 50%; margin: 0 auto 4px; background: var(--off); }
+.scale div.on { border-color: var(--c); color: var(--text); font-weight: 600; }
+.scale div.on::before { background: var(--c); }
+.today { margin-top: 12px; font-size: 14px; color: var(--muted); }
+.today b { color: var(--text); }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 14px; }
+th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td small { display: block; color: var(--muted); font-size: 12px; }
+tr.total td { font-weight: 700; border-bottom: none; }
+.pts-full { color: var(--green); }
+
+.gap { font-size: 16px; margin: 0 0 4px; }
+.gap b { color: var(--accent); }
+.route { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-top: 8px; display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.route .adds { display: flex; flex-wrap: wrap; gap: 6px; }
+.route .adds span { background: var(--soft); border-radius: 8px; padding: 3px 8px; font-size: 14px; font-weight: 600; }
+.route .to { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.ladder td:last-child { text-align: right; }
+.step { display: inline-block; background: var(--soft); border-radius: 8px; padding: 2px 7px; margin: 2px 0 2px 4px; font-size: 13px; white-space: nowrap; }
+.maxed { color: var(--green); font-size: 13px; }
+
+.rules td, .rules th { font-size: 13px; }
+footer { font-size: 12px; color: var(--muted); text-align: center; margin-top: 20px; }
+@media (max-width: 340px) {
+  .grid2, .fields { grid-template-columns: 1fr; }
+  .score { font-size: 34px; }
+  .lamp { width: 62px; height: 62px; }
+}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Traffic Light Calculator<span>紅綠燈計算機</span></h1>
+    <p class="sub">Find out which light you'll get at the month's last Tuesday cut-off, and what you still need for green.</p>
+  </header>
+
+  <section class="card">
+    <h2>1 · Period</h2>
+    <div class="grid2">
+      <label class="field">Report month <small>報告月份</small><input type="month" id="month"></label>
+      <label class="field">Join date <small>入會日期</small><input type="date" id="join"></label>
+    </div>
+    <div class="info" id="periodInfo"></div>
+    <details id="skipBox">
+      <summary>No-meeting Tuesdays (<span id="skipCount">0</span>)</summary>
+      <p class="hint">Hong Kong public holidays that fall on a Tuesday don't count as a week. Tap a date to count it after all, or add a Tuesday your chapter didn't meet.</p>
+      <div class="chips" id="chips"></div>
+      <div class="row">
+        <input type="date" id="addSkip" aria-label="Add a no-meeting Tuesday">
+        <button class="btn" type="button" id="addSkipBtn">Add</button>
+      </div>
+      <p class="hint err" id="skipErr" hidden></p>
+    </details>
+  </section>
+
+  <section class="card">
+    <h2>2 · Your 6-month numbers</h2>
+    <label class="btn primary" for="shot">Upload BNI app screenshot</label>
+    <input type="file" id="shot" accept="image/*" hidden>
+    <p class="hint">Use the <b>6 個月</b> tab. The screenshot is read on this device and never uploaded. Check the numbers after it fills them in.</p>
+    <div class="status" id="ocrStatus" hidden></div>
+
+    <div class="fields">
+      <label class="field">1-2-1 <small>一對一</small><input type="number" inputmode="numeric" min="0" id="v_O" placeholder="0"></label>
+      <label class="field">Referrals given <small>提供的引薦</small><input type="number" inputmode="numeric" min="0" id="v_G" placeholder="0"></label>
+      <label class="field">Visitors <small>來賓</small><input type="number" inputmode="numeric" min="0" id="v_V" placeholder="0"></label>
+      <label class="field">Training (CEU) <small>分會教育單位</small><input type="number" inputmode="numeric" min="0" id="v_T" placeholder="0"></label>
+      <label class="field wide">Biz given, HK$ <small>提供的交易金額</small><input type="number" inputmode="numeric" min="0" id="v_B" placeholder="0"></label>
+      <div class="group-label">Attendance (not in the screenshot)</div>
+      <label class="field">Absences <small>缺席</small><input type="number" inputmode="numeric" min="0" id="v_A" placeholder="0"></label>
+      <label class="field">Lates <small>遲到</small><input type="number" inputmode="numeric" min="0" id="v_L" placeholder="0"></label>
+    </div>
+    <p class="hint">Medical leave and substitutes don't count as absences.</p>
+  </section>
+
+  <section class="card" id="result"></section>
+  <section class="card" id="plan"></section>
+
+  <section class="card">
+    <details>
+      <summary>How the score works</summary>
+      <table class="rules">
+        <thead><tr><th>Part</th><th>Measured</th><th>Points</th></tr></thead>
+        <tbody>
+          <tr><td>Absences</td><td>total</td><td>0 → 15 · 1 → 10 · 2 → 5 · 3+ → 0</td></tr>
+          <tr><td>Lates</td><td>total</td><td>0 → 10 · 1 → 5 · 2+ → 0</td></tr>
+          <tr><td>Referrals given</td><td>per week</td><td>&lt;0.75 → 0 · &lt;1 → 5 · &lt;1.2 → 10 · &lt;1.5 → 15 · 1.5+ → 20</td></tr>
+          <tr><td>Visitors</td><td>per week</td><td>&lt;0.1 → 0 · &lt;0.25 → 5 · &lt;0.5 → 10 · &lt;0.75 → 15 · 0.75+ → 20</td></tr>
+          <tr><td>1-2-1</td><td>per week</td><td>0.5 or less → 0 · under 1 → 5 · 1+ → 10</td></tr>
+          <tr><td>Training (CEU)</td><td>total</td><td>0 → 0 · 1 → 5 · 2+ → 10</td></tr>
+          <tr><td>Biz given</td><td>total HK$</td><td>&lt;100k → 0 · &lt;200k → 5 · &lt;500k → 10 · 500k+ → 15</td></tr>
+        </tbody>
+      </table>
+      <p class="hint">The period is the 6 calendar months ending with the report month. Weeks are the Tuesday meetings in that period, counted from your join date if you joined later. Green 70–100 · Yellow 50–65 · Red 30–45 · Black 0–25.</p>
+      <p class="hint">The BNI app's 6 個月 tab may count back from today rather than from the 1st of the month, so its numbers can differ slightly from the chapter report.</p>
+    </details>
+  </section>
+
+  <footer>Numbers stay in this browser only.</footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var DAY = 864e5;
+  var TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  var STORE_KEY = "tl-calc-v1";
+  // Hong Kong general holidays that fall on a Tuesday.
+  var HOLIDAYS = ["2024-10-01", "2025-07-01", "2025-10-07", "2026-02-17", "2026-04-07", "2027-02-09"];
+
+  var LIGHTS = [
+    { min: 70, name: "Green", zh: "綠燈", range: "70–100", color: "var(--green)" },
+    { min: 50, name: "Yellow", zh: "黃燈", range: "50–65", color: "var(--yellow)" },
+    { min: 30, name: "Red", zh: "紅燈", range: "30–45", color: "var(--red)" },
+    { min: 0, name: "Black", zh: "黑燈", range: "0–25", color: "var(--black)" }
+  ];
+
+  // tiers: [lower bound, points, strictlyGreater]
+  // effort: rough cost of adding one unit, used to rank the routes to green
+  var PARTS = [
+    { k: "A", en: "Absences", zh: "缺席", max: 15 },
+    { k: "L", en: "Lates", zh: "遲到", max: 10 },
+    { k: "G", en: "Referrals given", zh: "提供的引薦", max: 20, perWeek: true, effort: 1, unit: ["referral", "referrals"],
+      tiers: [[0, 0], [0.75, 5], [1, 10], [1.2, 15], [1.5, 20]] },
+    { k: "V", en: "Visitors", zh: "來賓", max: 20, perWeek: true, effort: 3, unit: ["visitor", "visitors"],
+      tiers: [[0, 0], [0.1, 5], [0.25, 10], [0.5, 15], [0.75, 20]] },
+    { k: "O", en: "1-2-1", zh: "一對一", max: 10, perWeek: true, effort: 1, unit: ["1-2-1", "1-2-1s"],
+      tiers: [[0, 0], [0.5, 5, true], [1, 10]] },
+    { k: "T", en: "Training (CEU)", zh: "分會教育單位", max: 10, effort: 2, unit: ["CEU", "CEUs"],
+      tiers: [[0, 0], [1, 5], [2, 10]] },
+    { k: "B", en: "Biz given", zh: "提供的交易金額", max: 15, money: true, effort: 1 / 10000,
+      tiers: [[0, 0], [100000, 5], [200000, 10], [500000, 15]] }
+  ];
+  var KEYS = ["O", "G", "V", "T", "B", "A", "L"];
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function toDn(s) { var p = s.split("-").map(Number); return Date.UTC(p[0], p[1] - 1, p[2]) / DAY; }
+  function dnStr(dn) { var d = new Date(dn * DAY); return d.getUTCFullYear() + "-" + pad(d.getUTCMonth() + 1) + "-" + pad(d.getUTCDate()); }
+  function fmt(dn, withYear) {
+    return new Date(dn * DAY).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: withYear ? "numeric" : undefined, timeZone: "UTC" });
+  }
+  function isTue(dn) { return new Date(dn * DAY).getUTCDay() === 2; }
+  function money(n) { return "HK$" + Math.round(n).toLocaleString("en-US"); }
+  function num(v) { var n = parseInt(String(v == null ? "" : v).replace(/[^\d]/g, ""), 10); return isNaN(n) ? 0 : n; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  var now = new Date();
+  var TODAY = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / DAY;
+
+  var state = { join: "", vals: {}, skipAdd: [], skipDel: [] };
+  try {
+    var saved = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (saved && typeof saved === "object") {
+      state.join = saved.join || "";
+      state.vals = saved.vals || {};
+      state.skipAdd = saved.skipAdd || [];
+      state.skipDel = saved.skipDel || [];
+    }
+  } catch (e) { /* storage unavailable */ }
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* ignore */ } }
+
+  // ---------- scoring ----------
+  function need(p, t, W) {
+    var tier = p.tiers[t], b = tier[0];
+    if (!b) return 0;
+    if (!p.perWeek) return b;
+    return tier[2] ? Math.floor(b * W + 1e-9) + 1 : Math.ceil(b * W - 1e-9);
+  }
+  function tierOf(p, n, W) {
+    var t = 0;
+    for (var i = 1; i < p.tiers.length; i++) if (n >= need(p, i, W)) t = i;
+    return t;
+  }
+  function points(p, n, W) {
+    if (p.k === "A") return n > 2 ? 0 : n === 2 ? 5 : n === 1 ? 10 : 15;
+    if (p.k === "L") return n >= 2 ? 0 : n === 1 ? 5 : 10;
+    return p.tiers[tierOf(p, n, W)][1];
+  }
+  function scoreAll(vals, W) {
+    var total = 0, rows = [];
+    PARTS.forEach(function (p) {
+      var n = vals[p.k], pt = points(p, n, W);
+      total += pt;
+      rows.push({ p: p, n: n, pts: pt });
+    });
+    return { total: total, rows: rows };
+  }
+  function lightFor(score) {
+    for (var i = 0; i < LIGHTS.length; i++) if (score >= LIGHTS[i].min) return LIGHTS[i];
+    return LIGHTS[LIGHTS.length - 1];
+  }
+
+  // Every minimal mix of tier upgrades that reaches green, cheapest first.
+  function routes(vals, W) {
+    var fixed = points(PARTS[0], vals.A, W) + points(PARTS[1], vals.L, W);
+    var cats = PARTS.filter(function (p) { return p.tiers; });
+    var opts = cats.map(function (p) {
+      var n = vals[p.k], t0 = tierOf(p, n, W), arr = [];
+      for (var t = t0; t < p.tiers.length; t++) {
+        arr.push({ p: p, pts: p.tiers[t][1], add: Math.max(0, need(p, t, W) - n), jumps: t - t0 });
+      }
+      return arr;
+    });
+    var out = [], picks = [];
+    (function rec(i) {
+      if (i === cats.length) {
+        var total = fixed + picks.reduce(function (s, o) { return s + o.pts; }, 0);
+        if (total < 70 || picks.every(function (o) { return !o.jumps; })) return;
+        for (var j = 0; j < picks.length; j++) {
+          if (picks[j].jumps && total - picks[j].pts + opts[j][picks[j].jumps - 1].pts >= 70) return;
+        }
+        var changed = picks.filter(function (o) { return o.jumps; });
+        var effort = changed.reduce(function (s, o) { return s + o.add * o.p.effort; }, 0);
+        out.push({ total: total, changed: changed, effort: effort });
+        return;
+      }
+      for (var k = 0; k < opts[i].length; k++) { picks.push(opts[i][k]); rec(i + 1); picks.pop(); }
+    })(0);
+    out.sort(function (a, b) { return a.effort - b.effort || a.changed.length - b.changed.length; });
+    return out;
+  }
+
+  function addLabel(p, add) {
+    if (p.money) return "+" + money(add) + " biz";
+    return "+" + add + " " + p.unit[add === 1 ? 0 : 1];
+  }
+
+  // ---------- period ----------
+  function period() {
+    var m = $("month").value;
+    if (!/^\d{4}-\d{2}$/.test(m)) return { error: "Choose a report month." };
+    var y = +m.slice(0, 4), mo = +m.slice(5, 7);
+    var start = Date.UTC(y, mo - 6, 1) / DAY;
+    var end = Date.UTC(y, mo, 0) / DAY;
+    var joinDn = state.join ? toDn(state.join) : null;
+    var eff = joinDn != null && joinDn > start ? joinDn : start;
+    if (eff > end) return { error: "Your join date is after this report month.", start: start, end: end };
+
+    var skip = {};
+    HOLIDAYS.concat(state.skipAdd).forEach(function (s) { skip[s] = true; });
+    state.skipDel.forEach(function (s) { delete skip[s]; });
+
+    var meetings = [];
+    var first = eff + ((2 - new Date(eff * DAY).getUTCDay() + 7) % 7);
+    for (var d = first; d <= end; d += 7) if (!skip[dnStr(d)]) meetings.push(d);
+
+    var sofar = meetings.filter(function (d) { return d <= TODAY; }).length;
+    return { start: start, end: end, eff: eff, joinDn: joinDn, meetings: meetings, W: meetings.length, sofar: sofar, skip: skip };
+  }
+
+  function renderChips(per) {
+    var list = {};
+    HOLIDAYS.concat(state.skipAdd, state.skipDel).forEach(function (s) {
+      var dn = toDn(s);
+      if (per.start != null && dn >= per.start && dn <= per.end) list[s] = true;
+    });
+    var dates = Object.keys(list).sort();
+    var count = 0;
+    $("chips").innerHTML = dates.length ? "" : '<span class="hint">None in this period.</span>';
+    dates.forEach(function (s) {
+      var off = state.skipDel.indexOf(s) >= 0;
+      if (!off) count++;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip" + (off ? " off" : "");
+      b.textContent = fmt(toDn(s), true) + (off ? " · counted" : " · no meeting") + (HOLIDAYS.indexOf(s) < 0 && !off ? " ×" : "");
+      b.addEventListener("click", function () {
+        var ai = state.skipAdd.indexOf(s), di = state.skipDel.indexOf(s);
+        if (ai >= 0) state.skipAdd.splice(ai, 1);
+        else if (di >= 0) state.skipDel.splice(di, 1);
+        else state.skipDel.push(s);
+        save(); render();
+      });
+      $("chips").appendChild(b);
+    });
+    $("skipCount").textContent = count;
+  }
+
+  // ---------- render ----------
+  function readVals() {
+    var v = {};
+    KEYS.forEach(function (k) { v[k] = num($("v_" + k).value); });
+    return v;
+  }
+
+  function render() {
+    var per = period();
+    renderChips(per);
+    if (per.error) {
+      $("periodInfo").innerHTML = '<span class="err">' + esc(per.error) + "</span>";
+      $("result").innerHTML = "";
+      $("plan").innerHTML = "";
+      return;
+    }
+    var W = per.W, last = per.meetings[W - 1];
+    var left = per.meetings.filter(function (d) { return d > TODAY; }).length;
+    var info = "Period <b>" + fmt(per.start, true).replace(/^\w+, /, "") + " – " + fmt(per.end, true).replace(/^\w+, /, "") + "</b><br>" +
+      "Weeks counted: <b>" + W + "</b>" + (per.eff > per.start ? " (from your join date)" : "") + "<br>";
+    if (W) {
+      info += "Last cut-off: <b>" + fmt(last, true) + "</b>";
+      if (per.end >= TODAY && per.start <= TODAY) info += " · " + (left === 0 ? "no more meetings this month" : left + " more meeting" + (left > 1 ? "s" : "") + " after today");
+    }
+    $("periodInfo").innerHTML = info;
+
+    var vals = readVals();
+    if (!W) {
+      $("result").innerHTML = '<p class="err">There are no meetings in this period to score.</p>';
+      $("plan").innerHTML = "";
+      return;
+    }
+
+    var res = scoreAll(vals, W), light = lightFor(res.total);
+    var html = '<h2>3 · Your light at the cut-off</h2>' +
+      '<div class="result-top" style="--c:' + light.color + '"><div class="lamp" aria-hidden="true"></div><div>' +
+      '<div class="score">' + res.total + ' <small>/ 100</small></div>' +
+      '<div class="light-name">' + light.name + " " + light.zh + "</div>" +
+      '<div class="meta">On ' + fmt(last, true) + " · " + W + " weeks</div></div></div>" +
+      '<div class="scale">' + LIGHTS.map(function (l) {
+        return '<div style="--c:' + l.color + '" class="' + (l === light ? "on" : "") + '">' + l.name + "<br>" + l.range + "</div>";
+      }).join("") + "</div>";
+
+    if (per.sofar > 0 && per.sofar < W) {
+      var t = scoreAll(vals, per.sofar), tl = lightFor(t.total);
+      html += '<p class="today">If the cut-off were today (' + per.sofar + " weeks): <b>" + t.total + " · " + tl.name + "</b>. " +
+        "Each Tuesday adds a week, so per-week numbers drop unless you keep adding.</p>";
+    }
+
+    html += '<table><thead><tr><th>Part</th><th class="num">Yours</th><th class="num">Per week</th><th class="num">Points</th></tr></thead><tbody>';
+    res.rows.forEach(function (r) {
+      var p = r.p;
+      html += "<tr><td>" + p.en + "<small>" + p.zh + "</small></td>" +
+        '<td class="num">' + (p.money ? money(r.n) : r.n) + "</td>" +
+        '<td class="num">' + (p.perWeek ? (r.n / W).toFixed(2) : "") + "</td>" +
+        '<td class="num' + (r.pts === p.max ? " pts-full" : "") + '">' + r.pts + " / " + p.max + "</td></tr>";
+    });
+    html += '<tr class="total"><td>Total</td><td></td><td></td><td class="num">' + res.total + " / 100</td></tr></tbody></table>";
+    $("result").innerHTML = html;
+
+    renderPlan(vals, W, res, last);
+  }
+
+  function renderPlan(vals, W, res, last) {
+    var html = "<h2>4 · What you need by " + fmt(last) + "</h2>";
+    if (res.total >= 70) {
+      html += '<p class="gap">You\'re on <b style="color:var(--green)">green</b>, ' + (res.total - 70) + " points above the line. Avoid absences and lates to stay there.</p>";
+    } else {
+      html += '<p class="gap">You need <b>' + (70 - res.total) + " more points</b> for green. Pick one of these:</p>";
+      var rs = routes(vals, W).slice(0, 4);
+      if (!rs.length) html += '<p class="hint">Green can\'t be reached this month with the current absences and lates.</p>';
+      rs.forEach(function (r) {
+        html += '<div class="route"><div class="adds">' + r.changed.map(function (o) { return "<span>" + addLabel(o.p, o.add) + "</span>"; }).join("") +
+          '</div><div class="to">→ ' + r.total + " pts</div></div>";
+      });
+    }
+
+    html += "<h3>Next level for each part</h3><table class=\"ladder\"><tbody>";
+    PARTS.forEach(function (p) {
+      if (!p.tiers) return;
+      var n = vals[p.k], t0 = tierOf(p, n, W), steps = [];
+      for (var t = t0 + 1; t < p.tiers.length; t++) {
+        var add = need(p, t, W) - n;
+        steps.push('<span class="step">' + (p.money ? "+" + money(add) : "+" + add) + " → " + p.tiers[t][1] + "</span>");
+      }
+      html += "<tr><td>" + p.en + "<small>" + p.tiers[t0][1] + " pts now</small></td><td>" +
+        (steps.length ? steps.join("") : '<span class="maxed">Full marks</span>') + "</td></tr>";
+    });
+    html += "</tbody></table>";
+    $("plan").innerHTML = html;
+  }
+
+  // ---------- screenshot reading ----------
+  var worker = null;
+
+  function loadScript(src) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = src; s.onload = resolve; s.onerror = function () { reject(new Error("Couldn't load the reader. Check your connection.")); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function setStatus(html, cls, progress) {
+    var el = $("ocrStatus");
+    el.hidden = false;
+    el.className = "status" + (cls ? " " + cls : "");
+    el.innerHTML = html + (progress != null ? '<div class="bar"><i style="width:' + Math.round(progress * 100) + '%"></i></div>' : "");
+  }
+
+  function logger(m) {
+    if (m.status === "recognizing text") setStatus("Reading numbers…", "", m.progress);
+    else if (/load/.test(m.status)) setStatus("Getting the reader ready (first time only)…", "", m.progress);
+  }
+
+  async function getWorker() {
+    if (worker) return worker;
+    if (!window.Tesseract) await loadScript(TESSERACT_URL);
+    worker = await window.Tesseract.createWorker(["chi_tra", "eng"], 1, { logger: logger });
+    return worker;
+  }
+
+  function loadImage(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("That file isn't an image this browser can open.")); };
+      img.src = url;
+    });
+  }
+
+  // Greyscale and resize so text is a comfortable size for the reader.
+  function prepare(img) {
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var scale = w < 1100 ? Math.min(3, 1100 / w) : w > 2200 ? 2200 / w : 1;
+    var c = document.createElement("canvas");
+    c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+    var ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    var d = ctx.getImageData(0, 0, c.width, c.height), px = d.data;
+    for (var i = 0; i < px.length; i += 4) {
+      var g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      g = g > 200 ? 255 : g * 0.75;
+      px[i] = px[i + 1] = px[i + 2] = g;
+    }
+    ctx.putImageData(d, 0, 0);
+    return c;
+  }
+
+  function classify(t) {
+    if (/交易|金額|金额|易金/.test(t)) return "B";
+    if (/收到/.test(t)) return "R";
+    if (/引薦|引荐|提供/.test(t)) return "G";
+    if (/收入/.test(t)) return "I";
+    if (/對|对/.test(t)) return "O";
+    if (/賓|宾/.test(t)) return "V";
+    if (/教育|單位|单位|分會/.test(t)) return "T";
+    return null;
+  }
+
+  var ORDER = ["O", "G", "R", "B", "I", "V", "T"];
+
+  function parseText(text) {
+    var found = {}, labels = [], nums = [];
+    text.split(/\n+/).forEach(function (raw) {
+      var line = raw.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }).replace(/\s+/g, "");
+      if (!line) return;
+      var m = line.match(/(\d[\d,，.]*\d|\d)[^\d]{0,2}$/);
+      var n = m ? parseInt(m[1].replace(/[,，.]/g, ""), 10) : null;
+      var label = classify(m ? line.slice(0, m.index) : line);
+      if (label && n != null) { if (!(label in found)) found[label] = n; }
+      else if (label) labels.push(label);
+      else if (n != null && /^[\d,，.]+$/.test(line)) nums.push(n);
+    });
+    // Labels and numbers read as separate columns: pair them in order.
+    var free = labels.filter(function (l) { return !(l in found); });
+    if (free.length && free.length === nums.length) free.forEach(function (l, i) { found[l] = nums[i]; });
+    if (!Object.keys(found).length && nums.length === ORDER.length) ORDER.forEach(function (l, i) { found[l] = nums[i]; });
+    delete found.R; delete found.I;
+    return found;
+  }
+
+  async function readShot(file) {
+    var names = { O: "1-2-1", G: "Referrals", V: "Visitors", T: "Training", B: "Biz given" };
+    try {
+      setStatus("Opening screenshot…");
+      var canvas = prepare(await loadImage(file));
+      var w = await getWorker();
+      var found = {};
+      for (var psm of ["6", "4"]) {
+        await w.setParameters({ tessedit_pageseg_mode: psm });
+        var r = await w.recognize(canvas);
+        var f = parseText(r.data.text);
+        Object.keys(f).forEach(function (k) { if (!(k in found)) found[k] = f[k]; });
+        if (Object.keys(found).length >= 5) break;
+      }
+      var keys = Object.keys(found);
+      if (!keys.length) {
+        setStatus("Couldn't find the numbers in that image. Try a screenshot of the 6 個月 card, or type them in below.", "warn");
+        return;
+      }
+      keys.forEach(function (k) {
+        var el = $("v_" + k);
+        el.value = found[k];
+        el.classList.remove("filled"); void el.offsetWidth; el.classList.add("filled");
+      });
+      var missing = ["O", "G", "V", "T", "B"].filter(function (k) { return !(k in found); }).map(function (k) { return names[k]; });
+      setStatus("Filled in " + keys.length + " number" + (keys.length > 1 ? "s" : "") + ". Please check they match your screenshot." +
+        (missing.length ? " Couldn't read: " + missing.join(", ") + ". Type " + (missing.length > 1 ? "those" : "it") + " in below." : ""),
+        missing.length ? "warn" : "ok");
+      onInput();
+    } catch (e) {
+      setStatus(esc(e && e.message ? e.message : "Something went wrong reading the screenshot.") + " You can type the numbers in below.", "warn");
+    }
+  }
+
+  // ---------- wiring ----------
+  function onInput() {
+    KEYS.forEach(function (k) { state.vals[k] = $("v_" + k).value; });
+    save(); render();
+  }
+
+  $("month").value = now.getFullYear() + "-" + pad(now.getMonth() + 1);
+  $("join").value = state.join;
+  KEYS.forEach(function (k) {
+    var el = $("v_" + k);
+    if (state.vals[k] != null) el.value = state.vals[k];
+    el.addEventListener("input", onInput);
+  });
+  $("month").addEventListener("change", render);
+  $("join").addEventListener("change", function () { state.join = $("join").value; save(); render(); });
+  $("shot").addEventListener("change", function () {
+    var f = this.files && this.files[0];
+    if (f) readShot(f);
+    this.value = "";
+  });
+  $("addSkipBtn").addEventListener("click", function () {
+    var s = $("addSkip").value, err = $("skipErr");
+    err.hidden = true;
+    if (!s) return;
+    if (!isTue(toDn(s))) { err.textContent = "That date isn't a Tuesday."; err.hidden = false; return; }
+    var di = state.skipDel.indexOf(s);
+    if (di >= 0) state.skipDel.splice(di, 1);
+    else if (HOLIDAYS.indexOf(s) < 0 && state.skipAdd.indexOf(s) < 0) state.skipAdd.push(s);
+    $("addSkip").value = "";
+    save(); render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

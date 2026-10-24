@@ -1,0 +1,4 @@
+# Publish only the calculator page; keep chapter data (Excel etc.) out of the repo.
+*
+!index.html
+!.gitignore
