@@ -154,6 +154,7 @@ td.steps { text-align: right; }
       <h2>Join date <small>入會日期</small></h2>
     </div>
     <input type="date" id="join" aria-label="Join date">
+    <p class="note" id="joinNote" hidden></p>
     <p class="err" id="periodErr" hidden></p>
     <details class="inline">
       <summary id="periodLine">Report month</summary>
@@ -568,15 +569,31 @@ td.steps { text-align: right; }
 
   var ORDER = ["O", "G", "R", "B", "I", "V", "T"];
 
+  // 到期日期 is shown as DD/MM/YYYY.
+  function parseExpiry(lines) {
+    for (var i = 0; i < lines.length; i++) {
+      if (!/到期|期日/.test(lines[i])) continue;
+      var m = lines[i].match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/), digits = lines[i].replace(/\D/g, "");
+      var d = m ? [+m[1], +m[2], +m[3]] : digits.length === 8 ? [+digits.slice(0, 2), +digits.slice(2, 4), +digits.slice(4)] : null;
+      if (d && d[0] >= 1 && d[0] <= 31 && d[1] >= 1 && d[1] <= 12 && d[2] >= 2000 && d[2] <= 2100) return d;
+    }
+    return null;
+  }
+
   function parseText(text) {
     var found = {}, labels = [], nums = [];
-    text.split(/\n+/).forEach(function (raw) {
-      var line = raw.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }).replace(/\s+/g, "");
-      if (!line) return;
+    var lines = text.split(/\n+/).map(function (raw) {
+      return raw.replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 65248); }).replace(/\s+/g, "");
+    }).filter(Boolean);
+    // On a full home screen, read only below the "6 個月 12 個月 一生" tabs, skipping 本週清單.
+    var hdr = -1;
+    lines.forEach(function (l, i) { if (/個月|一生/.test(l)) hdr = i; });
+    lines.slice(hdr + 1).forEach(function (line) {
       var m = line.match(/(\d[\d,，.]*\d|\d)[^\d]{0,2}$/);
       var n = m ? parseInt(m[1].replace(/[,，.]/g, ""), 10) : null;
       var label = classify(m ? line.slice(0, m.index) : line);
-      if (label && n != null) { if (!(label in found)) found[label] = n; }
+      // Later rows win: if the tabs line was missed, the 6-month box still sits below 本週清單.
+      if (label && n != null) found[label] = n;
       else if (label) labels.push(label);
       else if (n != null && /^[\d,，.]+$/.test(line)) nums.push(n);
     });
@@ -585,8 +602,16 @@ td.steps { text-align: right; }
     if (free.length && free.length === nums.length) free.forEach(function (l, i) { found[l] = nums[i]; });
     if (!Object.keys(found).length && nums.length === ORDER.length) ORDER.forEach(function (l, i) { found[l] = nums[i]; });
     delete found.R; delete found.I;
-    return found;
+    return { vals: found, expiry: parseExpiry(lines) };
   }
+
+  // Join date estimate: one year before 到期日期 (29 Feb becomes 28 Feb).
+  function joinFromExpiry(e) {
+    var y = e[2] - 1, last = new Date(Date.UTC(y, e[1], 0)).getUTCDate();
+    return y + "-" + pad(e[1]) + "-" + pad(Math.min(e[0], last));
+  }
+
+  function flash(el) { el.classList.remove("filled"); void el.offsetWidth; el.classList.add("filled"); }
 
   async function readShot(file) {
     var names = { O: "1-2-1", G: "Referrals", V: "Visitors", T: "Training", B: "Biz given" };
@@ -594,12 +619,13 @@ td.steps { text-align: right; }
       setStatus("Opening…");
       var canvas = prepare(await loadImage(file));
       var w = await getWorker();
-      var found = {};
+      var found = {}, expiry = null;
       for (var psm of ["6", "4"]) {
         await w.setParameters({ tessedit_pageseg_mode: psm });
         var r = await w.recognize(canvas);
         var f = parseText(r.data.text);
-        Object.keys(f).forEach(function (k) { if (!(k in found)) found[k] = f[k]; });
+        Object.keys(f.vals).forEach(function (k) { if (!(k in found)) found[k] = f.vals[k]; });
+        expiry = expiry || f.expiry;
         if (Object.keys(found).length >= 5) break;
       }
       var keys = Object.keys(found);
@@ -607,11 +633,17 @@ td.steps { text-align: right; }
         setStatus("Couldn't read this image. Type the numbers in.", "warn");
         return;
       }
-      keys.forEach(function (k) {
+      keys.concat(["A", "L"]).forEach(function (k) {
         var el = $("v_" + k);
-        el.value = found[k];
-        el.classList.remove("filled"); void el.offsetWidth; el.classList.add("filled");
+        el.value = k in found ? found[k] : 0;
+        flash(el);
       });
+      if (expiry) {
+        state.join = $("join").value = joinFromExpiry(expiry);
+        $("joinNote").textContent = "From 到期日期 " + pad(expiry[0]) + "/" + pad(expiry[1]) + "/" + expiry[2] + ", minus 1 year. Change it if you joined earlier.";
+        $("joinNote").hidden = false;
+        flash($("join"));
+      }
       var missing = SHOT_KEYS.filter(function (k) { return !(k in found); }).map(function (k) { return names[k]; });
       if (missing.length) setStatus("Couldn't read " + missing.join(", ") + ". Please type it in.", "warn");
       else setStatus("✓ Filled in. Please check the numbers.", "ok");
@@ -635,7 +667,7 @@ td.steps { text-align: right; }
     el.addEventListener("input", onInput);
   });
   $("month").addEventListener("change", render);
-  $("join").addEventListener("change", function () { state.join = $("join").value; save(); render(); });
+  $("join").addEventListener("change", function () { state.join = $("join").value; $("joinNote").hidden = true; save(); render(); });
   $("shot").addEventListener("change", function () {
     var f = this.files && this.files[0];
     if (f) readShot(f);
